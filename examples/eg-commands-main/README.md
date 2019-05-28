@@ -17,9 +17,9 @@ type Config struct{}
 func main() {
 	opts.New(&Config{}).
 		AddCommand(
-			opts.New(&Foo{}).
-				AddCommand(
-					opts.New(&Bar{}),
+			opts.NewSub(&Foo{}).
+				SubAddCommand(
+					opts.NewSub(&Bar{}),
 				),
 		).
 		Parse().

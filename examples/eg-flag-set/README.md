@@ -33,7 +33,7 @@ $ eg-flag-set -a
 
 <!--tmpl,code=plain:go run main.go -a -->
 ``` plain 
-I0519 22:53:44.607289   69530 main.go:21] hello from app via glog
+I0528 14:23:54.208199   19108 main.go:21] hello from app via glog
 ```
 <!--/tmpl-->
 
@@ -57,8 +57,8 @@ $ eg-flag-set --help
   --help, -h              display help
 
   Completion options:
-  --install, -i           install fish-completion
-  --uninstall, -u         uninstall fish-completion
+  --install, -i           install bash-completion
+  --uninstall, -u         uninstall bash-completion
 
 ```
 <!--/tmpl-->

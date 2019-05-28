@@ -66,8 +66,8 @@ $ cmds --help
   --help, -h  display help
 
   Commands:
-  · bar  command two of two
   · foo  This text also becomes commands summary text
+  · bar  command two of two
 
 ```
 <!--/tmpl-->

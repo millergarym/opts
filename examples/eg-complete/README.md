@@ -76,8 +76,8 @@ $ eg-complete --help
   --help, -h       display help
 
   Completion options:
-  --install, -i    install fish-completion
-  --uninstall, -u  uninstall fish-completion
+  --install, -i    install bash-completion
+  --uninstall, -u  uninstall bash-completion
 
   Commands:
   · delta
@@ -101,8 +101,7 @@ Attempt second install
 `./eg-complete -i`
 <!--tmpl,code=plain:./eg-complete -i -->
 ``` plain 
-already installed in /Users/jpillora/.bashrc
-already installed at /Users/jpillora/.config/fish/completions/eg-complete.fish
+already installed in /home/garym/.bashrc
 ```
 <!--/tmpl-->
 
@@ -130,16 +129,16 @@ If you type `-` (dash) `TAB`, you'll see available flags:
 `COMP_LINE="./eg-complete -" ./eg-complete `
 <!--tmpl,code=plain:COMP_DEBUG= COMP_LINE="./eg-complete -" ./eg-complete -->
 ``` plain 
--b
+--alpha
+-a
+--help
+--install
 -i
 --uninstall
 -u
---alpha
--a
 --beta
---help
+-b
 -h
---install
 ```
 <!--/tmpl-->
 
@@ -165,13 +164,13 @@ Sub-command completion works as expected:
 `COMP_LINE="./eg-complete delta -" ./eg-complete`
 <!--tmpl,code=plain:COMP_DEBUG= COMP_LINE="./eg-complete delta -" ./eg-complete -->
 ``` plain 
+-d
+--help
+-h
 --zip
 -z
 --zop
 --dir
--d
---help
--h
 ```
 <!--/tmpl-->
 

@@ -39,10 +39,10 @@ import (
 	"github.com/jpillora/opts-examples/eg-commands-register/bar"
 )
 
-func New() opts.Opts {
+func New() opts.SubOpts {
 	c := cmd{}
 	//default name for a subcommand is its package name ("foo")
-	return opts.New(&c).AddCommand(bar.New())
+	return opts.NewSub(&c).SubAddCommand(bar.New())
 }
 
 type cmd struct {

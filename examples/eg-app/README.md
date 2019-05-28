@@ -75,8 +75,8 @@ $ ./eg-app --help
   --help, -h       display help
 
   Completion options:
-  --install, -i    install fish-completion
-  --uninstall, -u  uninstall fish-completion
+  --install, -i    install bash-completion
+  --uninstall, -u  uninstall bash-completion
 
   Version:
     0.2.6
