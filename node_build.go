@@ -21,6 +21,12 @@ func (n *node) Name(name string) Opts {
 	return n
 }
 
+//Name sets the name of the program
+func (n *node) SubName(name string) SubOpts {
+	n.name = name
+	return n
+}
+
 //Version sets the version of the program
 //and renders the 'version' template in the help text
 func (n *node) Version(version string) Opts {
@@ -31,6 +37,13 @@ func (n *node) Version(version string) Opts {
 //Summary sets the text summary of the program,
 //which, by default, is inserted below the usage text
 func (n *node) Summary(summary string) Opts {
+	n.summary = summary
+	return n
+}
+
+//Summary sets the text summary of the program,
+//which, by default, is inserted below the usage text
+func (n *node) SubSummary(summary string) SubOpts {
 	n.summary = summary
 	return n
 }

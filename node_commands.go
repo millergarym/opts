@@ -2,40 +2,39 @@ package opts
 
 import (
 	"fmt"
-	"log"
-	"strings"
+	"os"
 )
 
-func (n *node) AddCommand(cmd Opts) Opts {
+func (n *node) AddCommand(cmd SubOpts) Opts {
 	sub, ok := cmd.(*node)
 	if !ok {
 		panic("another implementation of opts???")
 	}
-	//default name should be package name,
-	//unless its in the main package, then
-	//the default becomes the struct name
-	structType := sub.item.val.Type()
-	pkgPath := structType.PkgPath()
-	if sub.name == "" && pkgPath != "main" && pkgPath != "" {
-		parts := strings.Split(pkgPath, "/")
-		sub.name = parts[len(parts)-1]
+	n.addCommand(sub)
+	return n
+}
+
+func (n *node) SubAddCommand(cmd SubOpts) SubOpts {
+	sub, ok := cmd.(*node)
+	if !ok {
+		panic("another implementation of opts???")
 	}
-	structName := structType.Name()
-	if sub.name == "" && structName != "" {
-		sub.name = camel2dash(structName)
-	}
+	n.addCommand(sub)
+	return n
+}
+
+func (n *node) addCommand(sub *node) {
 	//if still no name, needs to be manually set
 	if sub.name == "" {
 		n.errorf("cannot add command, please set a Name()")
-		return n
+		return
 	}
 	if _, exists := n.cmds[sub.name]; exists {
 		n.errorf("cannot add command, '%s' already exists", sub.name)
-		return n
+		return
 	}
 	sub.parent = n
 	n.cmds[sub.name] = sub
-	return n
 }
 
 func (n *node) matchedCommand() *node {
@@ -80,12 +79,20 @@ func (n *node) run(test bool) (bool, error) {
 		r2.Run()
 		return true, nil
 	}
-	return false, fmt.Errorf("command '%s' is not runnable", m.name)
+	return false, n.errorf("command '%s' is not runnable", m.name)
 }
 
 //Run the parsed configuration
 func (n *node) RunFatal() {
 	if err := n.Run(); err != nil {
-		log.Fatal(err)
+		if n.err != nil {
+			fmt.Fprintf(os.Stderr, n.Help())
+			if err != n.err {
+				fmt.Fprintf(os.Stderr, "    %v\n", err)
+			}
+			os.Exit(1)
+		}
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 }

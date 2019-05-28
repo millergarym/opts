@@ -3,6 +3,7 @@ package opts
 import (
 	"flag"
 	"reflect"
+	"strings"
 )
 
 //Opts is a single configuration command instance. It represents a node
@@ -67,20 +68,26 @@ type Opts interface {
 	//SetLineWidth alters the maximum number of characters in a
 	//line (excluding padding). By default, line width is 72.
 	SetLineWidth(width int) Opts
-	//Call the given function with this instance of Opts.
-	//This allows a registration pattern where the callee
-	//can add multiple commands, adjust the documentation,
-	//and more. See the "eg-commands-register" example.
-	Call(func(Opts)) Opts
 
 	//AddCommand adds another Opts instance as a subcommand.
-	AddCommand(Opts) Opts
+	AddCommand(SubOpts) Opts
 	//Parse uses os.Args to parse the internal FlagSet and
 	//returns a ParsedOpts instance.
 	Parse() ParsedOpts
 	//ParseArgs uses a given set of args to to parse the
 	//internal FlagSet and returns a ParsedOpts instance.
 	ParseArgs(args []string) ParsedOpts
+}
+
+type SubOpts interface {
+	//Name of the command. For the root command, Name defaults to the executable's
+	//base name. For subcommands, Name defaults to the package name, unless its the
+	//main package, then it defaults to the struct name.
+	SubName(name string) SubOpts
+	//Summary adds an arbitrarily long string to below the usage text
+	SubSummary(summary string) SubOpts
+	//AddCommand adds another Opts instance as a subcommand.
+	SubAddCommand(SubOpts) SubOpts
 }
 
 type ParsedOpts interface {
@@ -100,6 +107,26 @@ type ParsedOpts interface {
 //struct pointer.
 func New(config interface{}) Opts {
 	return newNode(reflect.ValueOf(config))
+}
+
+//New creates a new SubOpts instance using the given configuration
+//struct pointer.
+func NewSub(config interface{}) SubOpts {
+	sub := newNode(reflect.ValueOf(config))
+	//default name should be package name,
+	//unless its in the main package, then
+	//the default becomes the struct name
+	structType := sub.item.val.Type()
+	pkgPath := structType.PkgPath()
+	if sub.name == "" && pkgPath != "main" && pkgPath != "" {
+		parts := strings.Split(pkgPath, "/")
+		sub.name = parts[len(parts)-1]
+	}
+	structName := structType.Name()
+	if sub.name == "" && structName != "" {
+		sub.name = camel2dash(structName)
+	}
+	return sub
 }
 
 //Parse is shorthand for
