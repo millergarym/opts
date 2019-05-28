@@ -79,20 +79,22 @@ func (n *node) run(test bool) (bool, error) {
 		r2.Run()
 		return true, nil
 	}
-	return false, n.errorf("command '%s' is not runnable", m.name)
+	if len(m.cmds) > 0 {
+		//if matched command has no run,
+		//but has commands, show help instead
+		return false, exitError(m.Help())
+	}
+	return false, fmt.Errorf("command '%s' is not runnable", m.name)
 }
 
 //Run the parsed configuration
 func (n *node) RunFatal() {
 	if err := n.Run(); err != nil {
-		if n.err != nil {
-			fmt.Fprintf(os.Stderr, n.Help())
-			if err != n.err {
-				fmt.Fprintf(os.Stderr, "    %v\n", err)
-			}
-			os.Exit(1)
+		if e, ok := err.(exitError); ok {
+			fmt.Fprint(os.Stderr, string(e))
+			os.Exit(0)
 		}
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }

@@ -7,7 +7,7 @@ import (
 
 //errorf to be stored until parse-time
 func (n *node) errorf(format string, args ...interface{}) error {
-	err := &authorError{fmt.Sprintf(format, args...)}
+	err := authorError(fmt.Sprintf(format, args...))
 	//only store the first error
 	if n.err == nil {
 		n.err = err
@@ -15,7 +15,6 @@ func (n *node) errorf(format string, args ...interface{}) error {
 	return err
 }
 
-//Name sets the name of the program
 func (n *node) Name(name string) Opts {
 	n.name = name
 	return n
@@ -34,8 +33,6 @@ func (n *node) Version(version string) Opts {
 	return n
 }
 
-//Summary sets the text summary of the program,
-//which, by default, is inserted below the usage text
 func (n *node) Summary(summary string) Opts {
 	n.summary = summary
 	return n
@@ -55,16 +52,11 @@ func (n *node) Repo(repo string) Opts {
 	return n
 }
 
-//PkgRepo infers the repository link of the program
-//from the package import path of the struct (Note:
-//this will not work for 'main' packages)
 func (n *node) PkgRepo() Opts {
 	n.repoInfer = true
 	return n
 }
 
-//Author sets the author of the program
-//and renders the 'author' template in the help text
 func (n *node) Author(author string) Opts {
 	n.author = author
 	return n
@@ -90,18 +82,11 @@ func (n *node) DisablePadAll() Opts {
 	return n
 }
 
-//Set the line width (defaults to 72),
-//which defines where new-lines
-//are inserted into the help text
-//(defaults to 42)
 func (n *node) SetLineWidth(l int) Opts {
 	n.lineWidth = l
 	return n
 }
 
-//ConfigPath defines a path to a JSON file which matches
-//the structure of the provided config. Environment variables
-//override JSON Config variables.
 func (n *node) ConfigPath(path string) Opts {
 	n.internalOpts.ConfigPath = path
 	return n
@@ -112,10 +97,6 @@ func (n *node) UserConfigPath() Opts {
 	return n
 }
 
-//UseEnv enables an implicit "env" struct tag option on
-//all struct fields, the name of the field is converted
-//into an environment variable with the transform
-//`FooBar` -> `FOO_BAR`.
 func (n *node) UseEnv() Opts {
 	n.useEnv = true
 	return n
@@ -200,18 +181,14 @@ func (n *node) flags() []*item {
 	return flags
 }
 
-type authorError struct {
-	err string
+type authorError string
+
+func (e authorError) Error() string {
+	return string(e)
 }
 
-func (o *authorError) Error() string {
-	return o.err
-}
+type exitError string
 
-type exitError struct {
-	msg string
-}
-
-func (o *exitError) Error() string {
-	return o.msg
+func (e exitError) Error() string {
+	return string(e)
 }

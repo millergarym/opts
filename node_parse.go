@@ -32,13 +32,13 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 	//use built state to perform parse
 	if err := n.parse(args); err != nil {
 		//expected exit (0) print message as-is
-		if ee, ok := err.(*exitError); ok {
-			fmt.Fprintf(os.Stderr, ee.msg)
+		if ee, ok := err.(exitError); ok {
+			fmt.Fprint(os.Stderr, string(ee))
 			os.Exit(0)
 		}
 		//unexpected exit (1) print message to programmer
-		if ae, ok := err.(*authorError); ok {
-			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae.err)
+		if ae, ok := err.(authorError); ok {
+			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae)
 			os.Exit(1)
 		}
 		//unexpected exit (1) embed message in help to user
@@ -57,7 +57,7 @@ func (n *node) parse(args []string) error {
 	if n.err != nil {
 		return n.err
 	}
-	//root node? take program from the arg list
+	//root node? take program from the arg list (assumes os.Args format)
 	if n.parent == nil {
 		prog := ""
 		if len(args) > 0 {
@@ -71,6 +71,12 @@ func (n *node) parse(args []string) error {
 				_, n.item.name = path.Split(exe)
 			} else if prog != "" {
 				_, n.item.name = path.Split(prog)
+			}
+			//looks like weve been go-run, use package name?
+			if n.item.name == "main" {
+				if pkgPath := n.item.val.Type().PkgPath(); pkgPath != "" {
+					_, n.item.name = path.Split(pkgPath)
+				}
 			}
 		}
 	}
@@ -113,9 +119,9 @@ func (n *node) parse(args []string) error {
 	}
 	//handle help, version, install/uninstall
 	if n.internalOpts.Help {
-		return &exitError{n.Help()}
+		return exitError(n.Help())
 	} else if n.internalOpts.Version {
-		return &exitError{n.version}
+		return exitError(n.version)
 	} else if n.internalOpts.Install {
 		return n.manageCompletion(false)
 	} else if n.internalOpts.Uninstall {
@@ -124,7 +130,7 @@ func (n *node) parse(args []string) error {
 	//first round of defaults, applying env variables where necesseary
 	for _, item := range n.flags() {
 		k := item.envName
-		if item.set || k == "" {
+		if item.set() || k == "" {
 			continue
 		}
 		v := os.Getenv(k)
@@ -155,7 +161,7 @@ func (n *node) parse(args []string) error {
 			break
 		}
 		item := n.args[i]
-		if len(remaining) == 0 && !item.set && !item.slice {
+		if len(remaining) == 0 && !item.set() && !item.slice {
 			return fmt.Errorf("argument '%s' is missing", item.name)
 		}
 		if len(remaining) == 0 {
@@ -171,6 +177,15 @@ func (n *node) parse(args []string) error {
 			i++
 		}
 	}
+	//check min
+	for _, item := range n.args {
+		if item.slice && item.sets < item.min {
+			return fmt.Errorf("argument '%s' has too few args (%d/%d)", item.name, item.sets, item.min)
+		}
+		if item.slice && item.max != 0 && item.sets > item.max {
+			return fmt.Errorf("argument '%s' has too many args (%d/%d)", item.name, item.sets, item.max)
+		}
+	}
 	//use command? next arg can optionally match command
 	if len(n.cmds) > 0 && len(remaining) > 0 {
 		a := remaining[0]
@@ -182,7 +197,7 @@ func (n *node) parse(args []string) error {
 			if n.cmdname != nil {
 				*n.cmdname = a
 			}
-			//tail recurse!
+			//tail recurse! if only...
 			return sub.parse(remaining[1:])
 		}
 	}
@@ -262,9 +277,6 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	//use the specified group
 	if g, ok := kv.take("group"); ok {
 		group = g
-	} else if mode == "embedded" {
-		//if unset, embedded structs use the field name
-		group = camel2title(fName)
 	}
 	//special cases
 	if mode == "embedded" {
@@ -332,9 +344,11 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 			if n.flagNames[short] {
 				return n.errorf("short name '%s' on flag '%s' already exists", short, name)
 			}
+			n.flagNames[short] = true
 			i.shortName = short
 		}
 		//add to this command's flags
+		n.flagNames[name] = true
 		g := n.flagGroup(group)
 		g.flags = append(g.flags, i)
 	case "arg":
@@ -346,6 +360,13 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 					return n.errorf("min not an integer")
 				}
 				i.min = min
+			}
+			if m, ok := kv.take("max"); ok {
+				max, err := strconv.Atoi(m)
+				if err != nil {
+					return n.errorf("max not an integer")
+				}
+				i.max = max
 			}
 		}
 		//validations

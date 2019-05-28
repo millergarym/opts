@@ -23,6 +23,7 @@ type Opts interface {
 	ConfigPath(path string) Opts
 	//UserConfigPath is the same as ConfigPath however an extra flag (--config-path)
 	//is added to this Opts instance to give the user control of the filepath.
+	//Configuration unmarshalling occurs after flag parsing.
 	UserConfigPath() Opts
 	//UseEnv enables the default environment variables on all fields. This is
 	//equivalent to adding the opts tag "env" on all flag fields.
@@ -42,7 +43,7 @@ type Opts interface {
 	//FlagSet variable into this Opts instance.
 	EmbedGlobalFlagSet() Opts
 
-	//Summary adds an arbitrarily long string to below the usage text
+	//Summary adds a short sentence below the usage text
 	Summary(summary string) Opts
 	//Repo sets the source repository of the program and is displayed
 	//at the bottom of the help text.
@@ -51,8 +52,10 @@ type Opts interface {
 	//at the bottom of the help text.
 	Author(author string) Opts
 	//PkgRepo automatically sets Repo using the struct's package path.
+	//This does not work for types defined in the main package.
 	PkgRepo() Opts
 	//PkgAuthor automatically sets Author using the struct's package path.
+	//This does not work for types defined in the main package.
 	PkgAuthor() Opts
 	//DocSet replaces an existing template.
 	DocSet(id, template string) Opts
@@ -66,7 +69,7 @@ type Opts interface {
 	//By default, pad width is 2.
 	SetPadWidth(padding int) Opts
 	//SetLineWidth alters the maximum number of characters in a
-	//line (excluding padding). By default, line width is 72.
+	//line (excluding padding). By default, line width is 96.
 	SetLineWidth(width int) Opts
 
 	//AddCommand adds another Opts instance as a subcommand.
@@ -75,7 +78,8 @@ type Opts interface {
 	//returns a ParsedOpts instance.
 	Parse() ParsedOpts
 	//ParseArgs uses a given set of args to to parse the
-	//internal FlagSet and returns a ParsedOpts instance.
+	//current flags and args. Assumes the executed program is
+	//the first arg.
 	ParseArgs(args []string) ParsedOpts
 }
 
