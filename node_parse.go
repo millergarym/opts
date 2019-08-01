@@ -8,9 +8,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
 //Parse with os.Args
@@ -103,20 +106,8 @@ func (n *node) parse(args []string) error {
 			}
 		}
 	}
-	//create a new flagset, and link each item
-	flagset := flag.NewFlagSet(n.item.name, flag.ContinueOnError)
-	flagset.SetOutput(ioutil.Discard)
-	for _, item := range n.flags() {
-		flagset.Var(item, item.name, "")
-		if sn := item.shortName; sn != "" {
-			flagset.Var(item, sn, "")
-		}
-	}
-	if err := flagset.Parse(args); err != nil {
-		//insert flag errors into help text
-		n.err = err
-		n.internalOpts.Help = true
-	}
+	//get remaining args after extracting flags
+	remaining := n.applyFlags(args)
 	//handle help, version, install/uninstall
 	if n.internalOpts.Help {
 		return exitError(n.Help())
@@ -128,33 +119,13 @@ func (n *node) parse(args []string) error {
 		return n.manageCompletion(true)
 	}
 	//first round of defaults, applying env variables where necesseary
-	for _, item := range n.flags() {
-		k := item.envName
-		if item.set() || k == "" {
-			continue
-		}
-		v := os.Getenv(k)
-		if v == "" {
-			continue
-		}
-		err := item.Set(v)
-		if err != nil {
-			return fmt.Errorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
-		}
+	if err := n.applyDefaultsAndEnv(); err != nil {
+		return err
 	}
 	//second round, unmarshal directly into the struct, overwrites envs and flags
-	if c := n.internalOpts.ConfigPath; c != "" {
-		b, err := ioutil.ReadFile(c)
-		if err == nil {
-			v := n.val.Addr().Interface() //*struct
-			err = json.Unmarshal(b, v)
-			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
-			}
-		}
+	if err := n.unmarshalConfig(); err != nil {
+		return err
 	}
-	//get remaining args after extracting flags
-	remaining := flagset.Args()
 	i := 0
 	for {
 		if len(n.args) == i {
@@ -168,6 +139,8 @@ func (n *node) parse(args []string) error {
 			break
 		}
 		s := remaining[0]
+		// fmt.Printf("2. set %T to %v \n", item, s)
+
 		if err := item.Set(s); err != nil {
 			return fmt.Errorf("argument '%s' is invalid: %s", item.name, err)
 		}
@@ -206,6 +179,72 @@ func (n *node) parse(args []string) error {
 	//where --pong 7 is ignored
 	if len(remaining) != 0 {
 		return fmt.Errorf("Unexpected arguments: %s", strings.Join(remaining, " "))
+	}
+	return nil
+}
+
+func (n *node) applyFlags(args []string) []string {
+	//create a new flagset, and link each item
+	flagset := flag.NewFlagSet(n.item.name, flag.ContinueOnError)
+	flagset.SetOutput(ioutil.Discard)
+	for _, item := range n.flags() {
+		flagset.Var(item, item.name, "")
+		if sn := item.shortName; sn != "" {
+			flagset.Var(item, sn, "")
+		}
+	}
+	if err := flagset.Parse(args); err != nil {
+		//insert flag errors into help text
+		n.err = err
+		n.internalOpts.Help = true
+	}
+	return flagset.Args()
+}
+
+func (n *node) applyDefaultsAndEnv() error {
+	for _, item := range n.flags() {
+		k := item.envName
+		if item.set() || k == "" {
+			continue
+		}
+		v := os.Getenv(k)
+		if v == "" {
+			continue
+		}
+		// fmt.Printf("set %T to %v \n", item, v)
+		err := item.Set(v)
+		if err != nil {
+			return fmt.Errorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
+		}
+	}
+	return nil
+}
+
+func (n *node) unmarshalConfig() error {
+	if c := n.internalOpts.ConfigPath; c != "" {
+		if abs, err := filepath.Abs(os.ExpandEnv(c)); err != nil {
+			// problem with file
+		} else {
+			if b, err := ioutil.ReadFile(abs); err != nil {
+				// problem with file
+			} else {
+				v := n.val.Addr().Interface() //*struct
+				switch {
+				case strings.HasSuffix(c, ".yml") || strings.HasSuffix(c, ".yaml"):
+					err = yaml.Unmarshal(b, v)
+					if err != nil {
+						return fmt.Errorf("Invalid config file: %s err: %s", c, err)
+					}
+				case strings.HasSuffix(c, ".json"):
+					err = json.Unmarshal(b, v)
+					if err != nil {
+						return fmt.Errorf("Invalid config file: %s err: %s", c, err)
+					}
+				default:
+					return fmt.Errorf("Invalid config file, only .yaml, .yml and .json accepted : %s", c)
+				}
+			}
+		}
 	}
 	return nil
 }

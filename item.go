@@ -132,6 +132,8 @@ func (i *item) String() string {
 }
 
 func (i *item) Set(s string) error {
+	// fmt.Printf("3. set %T to %v \n", i.val.Interface(), s)
+	// panic("")
 	//can only set singles once
 	if i.sets != 0 && !i.slice {
 		return errors.New("already set")
