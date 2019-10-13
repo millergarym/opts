@@ -98,6 +98,9 @@ type ParsedOpts interface {
 //New creates a new Opts instance using the given configuration
 //struct pointer.
 func New(config interface{}) Opts {
+	if cfg, ok := config.(*node); ok {
+		return cfg
+	}
 	return newNode(reflect.ValueOf(config))
 }
 
