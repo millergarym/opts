@@ -82,6 +82,7 @@ type Opts interface {
 	ParseArgs(args []string) ParsedOpts
 }
 
+// ParsedOpts base signature of a parsed option
 type ParsedOpts interface {
 	//Help returns the final help text
 	Help() string
@@ -114,4 +115,10 @@ func Parse(config interface{}) ParsedOpts {
 //This includes flag.Value.
 type Setter interface {
 	Set(string) error
+}
+
+//SetterType is a Setter where the value type if specialised.
+type SetterType interface {
+	Setter
+	SetterType() interface{}
 }

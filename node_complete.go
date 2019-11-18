@@ -90,8 +90,23 @@ func (n *node) nodeCompletion() complete.Command {
 	}
 	//prepare args
 	if len(n.args) > 0 {
-		c.Args = &completerWrapper{
-			compl: &completerFS{},
+		// TODO predictor to match current arg
+		// i := 0
+		// par := n.parent
+		// for par != nil {
+		// 	par = par.parent
+		// 	i++
+		// }
+		// debugf("%v %v", i, os.Args)
+		if n.args[0].completer != nil {
+			//user completer
+			c.Args = &completerWrapper{
+				compl: n.args[0].completer,
+			}
+		} else {
+			c.Args = &completerWrapper{
+				compl: &completerFS{},
+			}
 		}
 	}
 	//prepare sub-commands
@@ -109,7 +124,7 @@ func (w *completerWrapper) Predict(args complete.Args) []string {
 	user := args.Last
 	results := w.compl.Complete(user)
 	if os.Getenv("OPTS_DEBUG") == "1" {
-		debugf("'%s' => %v", user, results)
+		debugf("%T %s' => %v", w.compl, user, results)
 	}
 	return results
 }

@@ -33,6 +33,7 @@ type item struct {
 	min, max  int //valid if slice
 	noarg     bool
 	completer Completer
+	setter    *reflect.Value
 	sets      int
 }
 
@@ -61,11 +62,17 @@ func newItem(val reflect.Value) (*item, error) {
 		}
 	}
 	//implements setter (flag.Value)?
-	if s, ok := v.(Setter); ok {
+	if _, ok := v.(Setter); ok {
 		supported = true
-		//NOTE: replacing val removes our ability to set
-		//the value, resolved by flag.Value handling all Set calls.
-		val = reflect.ValueOf(s)
+		rv := reflect.ValueOf(v)
+		i.setter = &rv
+		if st, ok := v.(SetterType); ok {
+			val = reflect.ValueOf(st.SetterType())
+		} else {
+			//NOTE: replacing val removes our ability to set
+			//the value, resolved by flag.Value handling all Set calls.
+			val = reflect.ValueOf(v)
+		}
 	}
 	//implements completer?
 	if c, ok := v.(Completer); ok {
@@ -141,6 +148,19 @@ func (i *item) Set(s string) error {
 	if i.sets != 0 && !i.slice {
 		return errors.New("already set")
 	}
+	//
+	if i.setter != nil {
+		if fv, ok := i.setter.Interface().(Setter); ok {
+			//addr implements set
+			if err := fv.Set(s); err != nil {
+				return err
+			}
+			//mark item as set!
+			i.sets++
+			//done
+			return nil
+		}
+	}
 	//set has two modes, slice and inplace.
 	// when slice, create a new zero value, scan into it, append to slice
 	// when inplace, take pointer, scan into it
@@ -152,14 +172,9 @@ func (i *item) Set(s string) error {
 	} else {
 		elem = i.val //possibly interface type
 	}
+	//
 	v := elem.Interface()
-	//convert string into value
-	if fv, ok := v.(Setter); ok {
-		//addr implements set
-		if err := fv.Set(s); err != nil {
-			return err
-		}
-	} else if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.String {
+	if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.String {
 		src := reflect.ValueOf(s)
 		dst := elem.Elem()
 		//convert custom string types
